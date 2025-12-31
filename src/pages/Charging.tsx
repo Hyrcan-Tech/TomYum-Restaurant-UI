@@ -38,7 +38,7 @@ const chargingStations: ChargingStation[] = [
     id: 3,
     name: "Station Gamma",
     status: "offline"
-  }
+  },
 ];
 
 const getStatusColor = (status: string) => {
