@@ -138,37 +138,37 @@
                     </div>
                     <div class="card-body">
                         <div class="list-group">
-                            <div class="list-group-item task-running">
+                            <div class="list-group-item task-running" data-id="T-101">
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">T-001: Deliver to Table 5</h6>
+                                    <h6 class="mb-1">T-101: Deliver to Table 5</h6>
                                     <span class="badge bg-primary">In Progress</span>
                                 </div>
                                 <small class="text-muted">Robot R1 • Started 5 min ago</small>
                             </div>
-                            <div class="list-group-item task-ready">
+                            <div class="list-group-item task-ready" data-id="T-102">
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">T-002: Collect from Table 3</h6>
+                                    <h6 class="mb-1">T-102: Collect from Table 3</h6>
                                     <span class="badge bg-success">Pending</span>
                                 </div>
                                 <small class="text-muted">High Priority • Waiting for assignment</small>
                             </div>
-                            <div class="list-group-item task-waiting">
+                            <div class="list-group-item task-waiting" data-id="T-103">
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">T-003: Move to Kitchen</h6>
+                                    <h6 class="mb-1">T-103: Move to Kitchen</h6>
                                     <span class="badge bg-warning">Queued</span>
                                 </div>
                                 <small class="text-muted">Medium Priority • Release in 3 min</small>
                             </div>
-                            <div class="list-group-item task-ready">
+                            <div class="list-group-item task-ready" data-id="T-104">
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">T-004: Payment at Table 2</h6>
+                                    <h6 class="mb-1">T-104: Payment at Table 2</h6>
                                     <span class="badge bg-success">Pending</span>
                                 </div>
                                 <small class="text-muted">Low Priority • Waiting for assignment</small>
                             </div>
-                            <div class="list-group-item task-ready">
+                            <div class="list-group-item task-ready" data-id="T-105">
                                 <div class="d-flex justify-content-between">
-                                    <h6 class="mb-1">T-005: Charging Request</h6>
+                                    <h6 class="mb-1">T-105: Charging Request</h6>
                                     <span class="badge bg-success">Pending</span>
                                 </div>
                                 <small class="text-muted">Dynamic Priority • Robot R2 (30% battery)</small>
@@ -184,33 +184,33 @@
                     </div>
                     <div class="card-body">
                         <div class="list-group">
-                            <div class="list-group-item robot-moving">
+                            <div class="list-group-item robot-moving" data-robot-id="R1">
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-1">R1 - Moving</h6>
-                                    <span class="badge bg-success">85%</span>
+                                    <span class="badge bg-success robot-battery">85%</span>
                                 </div>
-                                <small class="text-muted">Delivering to Table 5</small>
+                                <small class="text-muted robot-location">Delivering to Table 5</small>
                             </div>
-                            <div class="list-group-item robot-charging">
+                            <div class="list-group-item robot-charging" data-robot-id="R2">
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-1">R2 - Charging</h6>
-                                    <span class="badge bg-warning">30%</span>
+                                    <span class="badge bg-warning robot-battery">30%</span>
                                 </div>
-                                <small class="text-muted">At Charging Station</small>
+                                <small class="text-muted robot-location">At Charging Station</small>
                             </div>
-                            <div class="list-group-item robot-moving">
+                            <div class="list-group-item robot-moving" data-robot-id="R3">
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-1">R3 - Moving</h6>
-                                    <span class="badge bg-success">67%</span>
+                                    <span class="badge bg-success robot-battery">67%</span>
                                 </div>
-                                <small class="text-muted">Collecting from Table 3</small>
+                                <small class="text-muted robot-location">Collecting from Table 3</small>
                             </div>
-                            <div class="list-group-item robot-idle">
+                            <div class="list-group-item robot-idle" data-robot-id="R4">
                                 <div class="d-flex justify-content-between">
                                     <h6 class="mb-1">R4 - Idle</h6>
-                                    <span class="badge bg-success">92%</span>
+                                    <span class="badge bg-success robot-battery">92%</span>
                                 </div>
-                                <small class="text-muted">At Base Station</small>
+                                <small class="text-muted robot-location">At Base Station</small>
                             </div>
                         </div>
                     </div>
@@ -243,8 +243,10 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <!-- Axios -->
-    <script src="https://cdn.jsdelivr.net/npm/axios@1.6.0/dist/axios.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
     
     <script>
         // Initialize map

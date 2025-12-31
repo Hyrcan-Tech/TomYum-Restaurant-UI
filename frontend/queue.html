@@ -40,7 +40,7 @@
                 <h1><i class="bi bi-list-task me-2"></i>🍜 Tom Yum - Queue & Task Manager</h1>
                 <div>
                     <span class="badge bg-light text-dark me-3">Admin</span>
-                    <a href="index.html" class="btn btn-light">
+                    <a href="/" class="btn btn-light">
                         <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
                     </a>
                 </div>
@@ -72,7 +72,7 @@
                                 </select>
                             </div>
                             <div class="ms-auto">
-                                <button class="btn btn-success">
+                                <button class="btn btn-success" id="newTaskBtn">
                                     <i class="bi bi-plus-circle me-1"></i>New Task
                                 </button>
                             </div>
@@ -113,8 +113,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-primary me-1">Assign</button>
-                                        <button class="btn btn-sm btn-outline-secondary">Details</button>
+                                        <button class="btn btn-sm btn-outline-primary me-1 assign-task">Assign</button>
+                                        <button class="btn btn-sm btn-outline-secondary task-details">Details</button>
                                     </div>
                                 </div>
                             </div>
@@ -135,8 +135,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-warning me-1">Delay 10m</button>
-                                        <button class="btn btn-sm btn-outline-danger">Critical</button>
+                                        <button class="btn btn-sm btn-outline-warning me-1 delay-task">Delay 10m</button>
+                                        <button class="btn btn-sm btn-outline-danger critical-task">Critical</button>
                                     </div>
                                 </div>
                             </div>
@@ -157,7 +157,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-secondary">Details</button>
+                                        <button class="btn btn-sm btn-outline-secondary task-details">Details</button>
                                     </div>
                                 </div>
                             </div>
@@ -178,8 +178,8 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-primary me-1">Assign</button>
-                                        <button class="btn btn-sm btn-outline-secondary">Details</button>
+                                        <button class="btn btn-sm btn-outline-primary me-1 assign-task">Assign</button>
+                                        <button class="btn btn-sm btn-outline-secondary task-details">Details</button>
                                     </div>
                                 </div>
                             </div>
@@ -200,7 +200,7 @@
                                         </div>
                                     </div>
                                     <div>
-                                        <button class="btn btn-sm btn-outline-secondary">Details</button>
+                                        <button class="btn btn-sm btn-outline-secondary task-details">Details</button>
                                     </div>
                                 </div>
                             </div>
@@ -230,25 +230,25 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <tr class="robot-status-moving">
+                                    <tr class="robot-status-moving" data-robot-id="R1">
                                         <td>R1</td>
-                                        <td>85%</td>
-                                        <td>Moving</td>
+                                        <td class="robot-battery">85%</td>
+                                        <td class="robot-status">Moving</td>
                                     </tr>
-                                    <tr class="robot-status-charging">
+                                    <tr class="robot-status-charging" data-robot-id="R2">
                                         <td>R2</td>
-                                        <td>30%</td>
-                                        <td>Charging</td>
+                                        <td class="robot-battery">30%</td>
+                                        <td class="robot-status">Charging</td>
                                     </tr>
-                                    <tr class="robot-status-moving">
+                                    <tr class="robot-status-moving" data-robot-id="R3">
                                         <td>R3</td>
-                                        <td>67%</td>
-                                        <td>Moving</td>
+                                        <td class="robot-battery">67%</td>
+                                        <td class="robot-status">Moving</td>
                                     </tr>
-                                    <tr class="robot-status-idle">
+                                    <tr class="robot-status-idle" data-robot-id="R4">
                                         <td>R4</td>
-                                        <td>92%</td>
-                                        <td>Idle</td>
+                                        <td class="robot-battery">92%</td>
+                                        <td class="robot-status">Idle</td>
                                     </tr>
                                 </tbody>
                             </table>
@@ -313,6 +313,10 @@
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Custom JS -->
+    <script src="/static/js/websocket.js"></script>
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/app.js"></script>
     
     <script>
         // Initialize Sortable for task queue
@@ -327,23 +331,36 @@
         });
 
         // Add event listeners for buttons
-        document.querySelectorAll('.btn-outline-danger').forEach(button => {
-            button.addEventListener('click', function() {
+        document.querySelectorAll('.critical-task').forEach(button => {
+            button.addEventListener('click', async function() {
                 const taskId = this.closest('.task-item').dataset.id;
                 alert(`Task ${taskId} marked as critical!`);
                 // In a real app, you would send this update to the server
                 this.closest('.task-item').classList.add('priority-critical');
+                
+                // Apply critical override
+                await apiClient.applyTaskOverride(taskId, {
+                    boost: 50,
+                    reason: 'Operator marked as critical'
+                });
             });
         });
 
-        document.querySelectorAll('.btn-outline-primary').forEach(button => {
-            if (button.textContent.includes('Assign')) {
-                button.addEventListener('click', function() {
-                    const taskId = this.closest('.task-item').dataset.id;
-                    alert(`Assigning task ${taskId} to available robot...`);
-                    // In a real app, you would send this request to the server
-                });
-            }
+        document.querySelectorAll('.assign-task').forEach(button => {
+            button.addEventListener('click', async function() {
+                const taskId = this.closest('.task-item').dataset.id;
+                alert(`Assigning task ${taskId} to available robot...`);
+                // In a real app, you would send this request to the server
+                
+                // Update task status
+                await apiClient.updateTaskStatus(taskId, { state: 'RUNNING' });
+            });
+        });
+
+        // New task button
+        document.getElementById('newTaskBtn').addEventListener('click', function() {
+            // Show task creation modal or form
+            alert('New task creation functionality would go here');
         });
     </script>
 </body>

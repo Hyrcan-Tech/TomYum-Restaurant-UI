@@ -1,11 +1,13 @@
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import HTMLResponse
+import json
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from datetime import datetime, timedelta
 import uuid
-import json
 import os
 from enum import Enum
 
@@ -26,6 +28,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Serve static files
+app.mount("/static", StaticFiles(directory="frontend"), name="static")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -229,9 +234,32 @@ class SystemState:
                 "created_at": datetime.now() - timedelta(minutes=5)
             }
         ]
+        
+        self.active_connections: List[WebSocket] = []
 
 # Initialize system state
 system_state = SystemState()
+
+# WebSocket manager for real-time updates
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: List[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+
+    async def send_personal_message(self, message: str, websocket: WebSocket):
+        await websocket.send_text(message)
+
+    async def broadcast(self, message: str):
+        for connection in self.active_connections:
+            await connection.send_text(message)
+
+manager = ConnectionManager()
 
 # Dependency
 def get_db():
@@ -284,6 +312,27 @@ class PriorityUpdate(BaseModel):
 class TaskOverride(BaseModel):
     boost: int
     reason: str
+
+# Serve main pages
+@app.get("/", response_class=HTMLResponse)
+async def read_root():
+    with open("frontend/index.html", "r") as file:
+        return HTMLResponse(content=file.read())
+
+@app.get("/queue", response_class=HTMLResponse)
+async def read_queue():
+    with open("frontend/queue.html", "r") as file:
+        return HTMLResponse(content=file.read())
+
+@app.get("/task-details", response_class=HTMLResponse)
+async def read_task_details():
+    with open("frontend/task-details.html", "r") as file:
+        return HTMLResponse(content=file.read())
+
+@app.get("/reports", response_class=HTMLResponse)
+async def read_reports():
+    with open("frontend/reports.html", "r") as file:
+        return HTMLResponse(content=file.read())
 
 # Authentication endpoints
 @app.post("/api/auth/login", response_model=Token)
@@ -391,6 +440,13 @@ async def create_task(task: TaskCreate):
     }
     
     system_state.tasks.append(new_task)
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_created",
+        "data": new_task
+    }))
+    
     return new_task
 
 @app.put("/api/tasks/{task_id}/status")
@@ -401,6 +457,7 @@ async def update_task_status(task_id: str, status_update: dict):
     
     new_state = status_update.get("state")
     if new_state and new_state in TaskState.__members__.values():
+        old_state = task["state"]
         task["state"] = new_state
         
         # Update robot status if task is assigned
@@ -416,6 +473,18 @@ async def update_task_status(task_id: str, status_update: dict):
                 robot["status"] = RobotStatus.IDLE
                 robot["current_task_id"] = None
                 robot["last_active"] = datetime.now()
+        elif new_state == TaskState.PAUSED:
+            # Update robot status if assigned
+            if task["assigned_robot"]:
+                robot = next((r for r in system_state.robots if r["id"] == task["assigned_robot"]), None)
+                if robot:
+                    robot["status"] = RobotStatus.IDLE
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_updated",
+        "data": task
+    }))
     
     return {"message": "Task status updated", "task": task}
 
@@ -460,6 +529,12 @@ async def send_robot_command(robot_id: str, command: RobotCommand):
                 station["robot_id"] = None
                 break
     
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "robot_updated",
+        "data": robot
+    }))
+    
     return {"message": f"Command {command.command} sent to robot {robot_id}"}
 
 # Queue management endpoints
@@ -494,6 +569,12 @@ async def update_task_priority(task_id: str, priority_data: PriorityUpdate):
     
     system_state.assignment_logs.append(log_entry)
     
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_priority_updated",
+        "data": task
+    }))
+    
     return {"message": "Task priority updated", "task": task, "log": log_entry}
 
 @app.post("/api/queue/tasks/{task_id}/override")
@@ -520,6 +601,12 @@ async def apply_task_override(task_id: str, override_data: TaskOverride):
     
     system_state.assignment_logs.append(log_entry)
     
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_override_applied",
+        "data": task
+    }))
+    
     return {"message": "Task marked as critical", "task": task, "log": log_entry}
 
 @app.delete("/api/queue/tasks/{task_id}/override")
@@ -544,6 +631,12 @@ async def remove_task_override(task_id: str):
     }
     
     system_state.assignment_logs.append(log_entry)
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_override_removed",
+        "data": task
+    }))
     
     return {"message": "Task override removed", "task": task, "log": log_entry}
 
@@ -596,6 +689,15 @@ async def request_manual_charging(robot_data: dict):
     robot["status"] = RobotStatus.CHARGING
     robot["current_location"] = "Charging Station"
     
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "charging_updated",
+        "data": {
+            "robot": robot,
+            "station": available_station
+        }
+    }))
+    
     return {"message": f"Manual charging request for robot {robot_id} accepted", "success": True}
 
 # Task state machine endpoints
@@ -617,6 +719,12 @@ async def confirm_task_step(task_id: str):
     }
     
     system_state.assignment_logs.append(log_entry)
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_step_confirmed",
+        "data": task
+    }))
     
     return {"message": f"Step confirmed for task {task_id}", "task": task, "log": log_entry}
 
@@ -658,6 +766,12 @@ async def pause_task(task_id: str):
         if robot:
             robot["status"] = RobotStatus.IDLE
     
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_paused",
+        "data": task
+    }))
+    
     return {"message": f"Task {task_id} paused", "task": task}
 
 @app.put("/api/tasks/{task_id}/resume")
@@ -667,6 +781,12 @@ async def resume_task(task_id: str):
         raise HTTPException(status_code=404, detail="Task not found")
     
     task["state"] = TaskState.READY
+    
+    # Broadcast update to all connected clients
+    await manager.broadcast(json.dumps({
+        "type": "task_resumed",
+        "data": task
+    }))
     
     return {"message": f"Task {task_id} resumed", "task": task}
 
@@ -736,14 +856,18 @@ async def get_performance_report():
         "uptime": uptime
     }
 
-# WebSocket endpoint placeholder
+# WebSocket endpoint
 @app.websocket("/ws")
-async def websocket_endpoint(websocket):
-    # In a real implementation, this would handle WebSocket connections
-    # For now, we'll just acknowledge the connection
-    await websocket.accept()
-    await websocket.send_text("WebSocket connection established")
-    await websocket.close()
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            # Echo the message back (in a real app, you might process it)
+            await manager.send_personal_message(f"You sent: {data}", websocket)
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+        await manager.broadcast("A client disconnected")
 
 if __name__ == "__main__":
     import uvicorn
