@@ -15,6 +15,7 @@ import Customers from "./pages/Customers";
 import Payments from "./pages/Payments";
 import Inventory from "./pages/Inventory";
 import CustomerOrder from "./pages/CustomerOrder";
+import MapPage from "./pages/Map";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
               <Route path="/" element={<Index />} />
               <Route path="/tasks" element={<Tasks />} />
               <Route path="/robots" element={<Robots />} />
+              <Route path="/map" element={<MapPage />} />
               <Route path="/analytics" element={<Analytics />} />
               <Route path="/settings" element={<Settings />} />
               <Route path="/charging" element={<Charging />} />
