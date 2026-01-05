@@ -865,6 +865,17 @@ async def get_performance_report():
         "uptime": uptime
     }
 
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_spa(full_path: str):
+    # Try to serve the specific file first
+    if full_path and full_path != "/":
+        try:
+            return get_html_content(f"{full_path}.html")
+        except:
+            pass
+    # If not found, serve index.html for SPA routing
+    return get_html_content("index.html")
+    
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
