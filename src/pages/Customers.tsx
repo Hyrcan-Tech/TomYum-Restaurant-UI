@@ -20,20 +20,47 @@ export default function CustomersPage() {
   });
 
   useEffect(() => {
-    fetchCustomers();
+    // Initialize with some mock customers
+    const mockCustomers: Customer[] = [
+      {
+        id: 1,
+        name: "John Smith",
+        email: "john@example.com",
+        phone: "(555) 123-4567",
+        totalVisits: 5,
+        totalSpent: 250.50,
+        favoriteItems: ["Pad Thai", "Tom Yum Soup"],
+        lastVisit: "2024-06-15",
+        membership: "regular"
+      },
+      {
+        id: 2,
+        name: "Sarah Johnson",
+        email: "sarah@example.com",
+        phone: "(555) 234-5678",
+        totalVisits: 12,
+        totalSpent: 680.75,
+        favoriteItems: ["Green Curry", "Mango Sticky Rice"],
+        lastVisit: "2024-06-20",
+        membership: "premium"
+      },
+      {
+        id: 3,
+        name: "Michael Chen",
+        email: "michael@example.com",
+        phone: "(555) 345-6789",
+        totalVisits: 8,
+        totalSpent: 420.30,
+        favoriteItems: ["Massaman Curry", "Thai Iced Tea"],
+        lastVisit: "2024-06-18",
+        membership: "vip"
+      }
+    ];
+
+    setCustomers(mockCustomers);
   }, []);
 
-  const fetchCustomers = () => {
-    try {
-      const customerData = customerService.getCustomers();
-      setCustomers(customerData);
-    } catch (error) {
-      toast.error("Failed to load customers");
-      console.error("Error fetching customers:", error);
-    }
-  };
-
-  const filteredCustomers = customers.filter(customer => 
+  const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.phone.includes(searchTerm)
@@ -44,11 +71,21 @@ export default function CustomersPage() {
       toast.error("Please fill in all required fields");
       return;
     }
-    
+
     try {
-      customerService.addCustomer(newCustomer);
+      const newCustomerWithDefaults: Customer = {
+        ...newCustomer,
+        id: Math.max(0, ...customers.map(c => c.id)) + 1,
+        totalVisits: 0,
+        totalSpent: 0,
+        favoriteItems: [],
+        lastVisit: new Date().toISOString().split('T')[0],
+        membership: 'regular'
+      };
+
+      setCustomers([...customers, newCustomerWithDefaults]);
       setNewCustomer({ name: "", email: "", phone: "" });
-      fetchCustomers(); // Refresh the list
+      toast.success('Customer added successfully');
     } catch (error) {
       toast.error("Failed to add customer");
     }
@@ -56,8 +93,8 @@ export default function CustomersPage() {
 
   const handleDeleteCustomer = (id: number) => {
     try {
-      customerService.deleteCustomer(id);
-      fetchCustomers(); // Refresh the list
+      setCustomers(customers.filter(customer => customer.id !== id));
+      toast.success('Customer deleted successfully');
     } catch (error) {
       toast.error("Failed to delete customer");
     }
@@ -96,11 +133,11 @@ export default function CustomersPage() {
                 <div className="mb-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input 
-                      placeholder="Search customers..." 
-                      value={searchTerm} 
-                      onChange={(e) => setSearchTerm(e.target.value)} 
-                      className="pl-10" 
+                    <Input
+                      placeholder="Search customers..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
                 </div>
@@ -146,9 +183,9 @@ export default function CustomersPage() {
                           <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleDeleteCustomer(customer.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -161,7 +198,7 @@ export default function CustomersPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Add New Customer */}
           <div className="space-y-6">
             <Card>
@@ -173,30 +210,30 @@ export default function CustomersPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name</Label>
-                  <Input 
-                    id="name" 
-                    value={newCustomer.name} 
-                    onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})} 
-                    placeholder="e.g., John Smith" 
+                  <Input
+                    id="name"
+                    value={newCustomer.name}
+                    onChange={(e) => setNewCustomer({...newCustomer, name: e.target.value})}
+                    placeholder="e.g., John Smith"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="email">Email Address</Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    value={newCustomer.email} 
-                    onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})} 
-                    placeholder="e.g., john@example.com" 
+                  <Input
+                    id="email"
+                    type="email"
+                    value={newCustomer.email}
+                    onChange={(e) => setNewCustomer({...newCustomer, email: e.target.value})}
+                    placeholder="e.g., john@example.com"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="phone">Phone Number</Label>
-                  <Input 
-                    id="phone" 
-                    value={newCustomer.phone} 
-                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})} 
-                    placeholder="e.g., (555) 123-4567" 
+                  <Input
+                    id="phone"
+                    value={newCustomer.phone}
+                    onChange={(e) => setNewCustomer({...newCustomer, phone: e.target.value})}
+                    placeholder="e.g., (555) 123-4567"
                   />
                 </div>
                 <Button className="w-full" onClick={handleAddCustomer}>
@@ -204,7 +241,7 @@ export default function CustomersPage() {
                 </Button>
               </CardContent>
             </Card>
-            
+
             {/* Customer Statistics */}
             <Card>
               <CardHeader>
@@ -237,7 +274,7 @@ export default function CustomersPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Membership Tiers */}
             <Card>
               <CardHeader>

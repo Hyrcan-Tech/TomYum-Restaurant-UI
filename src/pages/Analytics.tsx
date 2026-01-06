@@ -4,11 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { BarChart, PieChart, TrendingUp, Clock, CheckCircle, XCircle, AlertTriangle } from "lucide-react";
 import { MadeWithDyad } from "@/components/made-with-dyad";
-import { reportingService } from "@/lib/reporting-service";
+import { useRestaurant } from "@/lib/restaurant-context";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
-// Mock data for charts (in a real app, this would come from the API)
+// Mock data for charts
 const taskCompletionData = [
   { day: "Mon", completed: 24, pending: 6 },
   { day: "Tue", completed: 32, pending: 4 },
@@ -27,6 +27,7 @@ const taskTypeData = [
 ];
 
 export default function AnalyticsPage() {
+  const { tasks, robots } = useRestaurant();
   const [reportData, setReportData] = useState({
     totalTasks: 0,
     completedTasks: 0,
@@ -37,32 +38,20 @@ export default function AnalyticsPage() {
   });
 
   useEffect(() => {
-    fetchReportData();
-  }, []);
+    // Calculate statistics from context data
+    const totalTasks = tasks.length;
+    const completedTasks = tasks.filter(t => t.status === "completed").length;
+    const completionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-  const fetchReportData = async () => {
-    try {
-      const dailyReport = await reportingService.getDailyReport();
-      const taskStats = await reportingService.getTaskStatistics();
-      const perfReport = await reportingService.getPerformanceReport();
-      
-      const totalTasks = dailyReport.total_tasks;
-      const completedTasks = dailyReport.completed_tasks;
-      const completionRate = totalTasks ? Math.round((completedTasks / totalTasks) * 100) : 0;
-      
-      setReportData({
-        totalTasks,
-        completedTasks,
-        completionRate,
-        avgCompletionTime: dailyReport.avg_completion_time,
-        activeRobots: parseInt(dailyReport.robot_utilization) || 0,
-        systemHealth: perfReport.system_health
-      });
-    } catch (error) {
-      toast.error("Failed to load analytics data");
-      console.error("Error fetching report data:", error);
-    }
-  };
+    setReportData({
+      totalTasks,
+      completedTasks,
+      completionRate,
+      avgCompletionTime: "2.5 min", // Mock value
+      activeRobots: robots.length,
+      systemHealth: 98 // Mock value
+    });
+  }, [tasks, robots]);
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
@@ -71,7 +60,7 @@ export default function AnalyticsPage() {
           <h1 className="text-3xl font-bold text-gray-900">Analytics Dashboard</h1>
           <p className="text-gray-600 mt-2">Performance metrics and insights</p>
         </div>
-        
+
         {/* Key Metrics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
           <Card>
@@ -115,7 +104,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Charts */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
           <Card>
@@ -127,12 +116,12 @@ export default function AnalyticsPage() {
                 {taskCompletionData.map((day, index) => (
                   <div key={index} className="flex flex-col items-center flex-1 px-1">
                     <div className="flex items-end justify-center h-40 w-full">
-                      <div 
-                        className="w-3/4 bg-green-500 rounded-t mr-1" 
+                      <div
+                        className="w-3/4 bg-green-500 rounded-t mr-1"
                         style={{ height: `${(day.completed / 50) * 100}%` }}
                       ></div>
-                      <div 
-                        className="w-3/4 bg-yellow-500 rounded-t" 
+                      <div
+                        className="w-3/4 bg-yellow-500 rounded-t"
                         style={{ height: `${(day.pending / 50) * 100}%` }}
                       ></div>
                     </div>
@@ -165,8 +154,8 @@ export default function AnalyticsPage() {
                   <div key={index} className="flex items-center justify-between text-sm">
                     <div className="flex items-center">
                       <div className={`w-3 h-3 rounded mr-2 ${
-                        index === 0 ? "bg-blue-500" : 
-                        index === 1 ? "bg-purple-500" : 
+                        index === 0 ? "bg-blue-500" :
+                        index === 1 ? "bg-purple-500" :
                         index === 2 ? "bg-green-500" : "bg-yellow-500"
                       }`}></div>
                       <span>{item.type}</span>
@@ -178,7 +167,7 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </div>
-        
+
         {/* Task Status Summary */}
         <Card className="mb-6">
           <CardHeader>
@@ -216,7 +205,7 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
-        
+
         <MadeWithDyad />
       </div>
     </div>

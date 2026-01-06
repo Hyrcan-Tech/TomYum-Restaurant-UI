@@ -24,18 +24,67 @@ export default function InventoryPage() {
   });
 
   useEffect(() => {
-    fetchInventory();
-  }, []);
+    // Initialize with mock inventory data
+    const mockInventory: InventoryItem[] = [
+      {
+        id: 1,
+        name: "Shrimp",
+        category: "Protein",
+        quantity: 15,
+        unit: "lbs",
+        minThreshold: 5,
+        supplier: "Ocean Fresh",
+        lastRestocked: "2024-06-18",
+        status: "in-stock"
+      },
+      {
+        id: 2,
+        name: "Chicken Breast",
+        category: "Protein",
+        quantity: 8,
+        unit: "lbs",
+        minThreshold: 10,
+        supplier: "Farm Fresh",
+        lastRestocked: "2024-06-15",
+        status: "low-stock"
+      },
+      {
+        id: 3,
+        name: "Rice Noodles",
+        category: "Dry Goods",
+        quantity: 25,
+        unit: "packs",
+        minThreshold: 5,
+        supplier: "Thai Imports",
+        lastRestocked: "2024-06-20",
+        status: "in-stock"
+      },
+      {
+        id: 4,
+        name: "Coconut Milk",
+        category: "Canned Goods",
+        quantity: 3,
+        unit: "cans",
+        minThreshold: 5,
+        supplier: "Tropical Foods",
+        lastRestocked: "2024-06-10",
+        status: "low-stock"
+      },
+      {
+        id: 5,
+        name: "Lemongrass",
+        category: "Herbs",
+        quantity: 0,
+        unit: "stalks",
+        minThreshold: 3,
+        supplier: "Local Market",
+        lastRestocked: "2024-06-12",
+        status: "out-of-stock"
+      }
+    ];
 
-  const fetchInventory = () => {
-    try {
-      const inventoryData = inventoryService.getItems();
-      setInventory(inventoryData);
-    } catch (error) {
-      toast.error("Failed to load inventory");
-      console.error("Error fetching inventory:", error);
-    }
-  };
+    setInventory(mockInventory);
+  }, []);
 
   const filteredInventory = inventory.filter(item =>
     item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -66,9 +115,16 @@ export default function InventoryPage() {
       toast.error("Please fill in all required fields");
       return;
     }
-    
+
     try {
-      inventoryService.addItem(newItem);
+      const newItemWithStatus: InventoryItem = {
+        ...newItem,
+        id: Math.max(0, ...inventory.map(i => i.id)) + 1,
+        status: newItem.quantity === 0 ? 'out-of-stock' :
+               newItem.quantity <= newItem.minThreshold ? 'low-stock' : 'in-stock'
+      };
+
+      setInventory([...inventory, newItemWithStatus]);
       setNewItem({
         name: "",
         category: "",
@@ -78,7 +134,7 @@ export default function InventoryPage() {
         supplier: "",
         lastRestocked: new Date().toISOString().split('T')[0]
       });
-      fetchInventory(); // Refresh the list
+      toast.success('Item added to inventory');
     } catch (error) {
       toast.error("Failed to add item");
     }
@@ -86,8 +142,8 @@ export default function InventoryPage() {
 
   const handleDeleteItem = (id: number) => {
     try {
-      inventoryService.deleteItem(id);
-      fetchInventory(); // Refresh the list
+      setInventory(inventory.filter(item => item.id !== id));
+      toast.success('Item removed from inventory');
     } catch (error) {
       toast.error("Failed to delete item");
     }
@@ -170,11 +226,11 @@ export default function InventoryPage() {
                 <div className="mb-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input 
-                      placeholder="Search inventory..." 
-                      value={searchTerm} 
-                      onChange={(e) => setSearchTerm(e.target.value)} 
-                      className="pl-10" 
+                    <Input
+                      placeholder="Search inventory..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
                 </div>
@@ -207,9 +263,9 @@ export default function InventoryPage() {
                           <Button variant="outline" size="sm">
                             <Edit className="h-4 w-4" />
                           </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <Button
+                            variant="outline"
+                            size="sm"
                             onClick={() => handleDeleteItem(item.id)}
                           >
                             <Trash2 className="h-4 w-4" />
@@ -222,7 +278,7 @@ export default function InventoryPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Add New Item */}
           <div className="space-y-6">
             <Card>
@@ -234,59 +290,59 @@ export default function InventoryPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Item Name</Label>
-                  <Input 
-                    id="name" 
-                    value={newItem.name} 
-                    onChange={(e) => setNewItem({...newItem, name: e.target.value})} 
-                    placeholder="e.g., Shrimp" 
+                  <Input
+                    id="name"
+                    value={newItem.name}
+                    onChange={(e) => setNewItem({...newItem, name: e.target.value})}
+                    placeholder="e.g., Shrimp"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="category">Category</Label>
-                    <Input 
-                      id="category" 
-                      value={newItem.category} 
-                      onChange={(e) => setNewItem({...newItem, category: e.target.value})} 
-                      placeholder="e.g., Protein" 
+                    <Input
+                      id="category"
+                      value={newItem.category}
+                      onChange={(e) => setNewItem({...newItem, category: e.target.value})}
+                      placeholder="e.g., Protein"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="supplier">Supplier</Label>
-                    <Input 
-                      id="supplier" 
-                      value={newItem.supplier} 
-                      onChange={(e) => setNewItem({...newItem, supplier: e.target.value})} 
-                      placeholder="e.g., Ocean Fresh" 
+                    <Input
+                      id="supplier"
+                      value={newItem.supplier}
+                      onChange={(e) => setNewItem({...newItem, supplier: e.target.value})}
+                      placeholder="e.g., Ocean Fresh"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-3 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="quantity">Quantity</Label>
-                    <Input 
-                      id="quantity" 
-                      type="number" 
-                      value={newItem.quantity || ""} 
-                      onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})} 
+                    <Input
+                      id="quantity"
+                      type="number"
+                      value={newItem.quantity || ""}
+                      onChange={(e) => setNewItem({...newItem, quantity: parseInt(e.target.value) || 0})}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="unit">Unit</Label>
-                    <Input 
-                      id="unit" 
-                      value={newItem.unit} 
-                      onChange={(e) => setNewItem({...newItem, unit: e.target.value})} 
-                      placeholder="e.g., lbs" 
+                    <Input
+                      id="unit"
+                      value={newItem.unit}
+                      onChange={(e) => setNewItem({...newItem, unit: e.target.value})}
+                      placeholder="e.g., lbs"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="threshold">Min Threshold</Label>
-                    <Input 
-                      id="threshold" 
-                      type="number" 
-                      value={newItem.minThreshold || ""} 
-                      onChange={(e) => setNewItem({...newItem, minThreshold: parseInt(e.target.value) || 0})} 
+                    <Input
+                      id="threshold"
+                      type="number"
+                      value={newItem.minThreshold || ""}
+                      onChange={(e) => setNewItem({...newItem, minThreshold: parseInt(e.target.value) || 0})}
                     />
                   </div>
                 </div>
@@ -295,7 +351,7 @@ export default function InventoryPage() {
                 </Button>
               </CardContent>
             </Card>
-            
+
             {/* Inventory Categories */}
             <Card>
               <CardHeader>
@@ -314,7 +370,7 @@ export default function InventoryPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Low Stock Alerts */}
             <Card>
               <CardHeader>

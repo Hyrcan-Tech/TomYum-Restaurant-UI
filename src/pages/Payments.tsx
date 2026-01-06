@@ -16,18 +16,62 @@ export default function PaymentsPage() {
   const [filterStatus, setFilterStatus] = useState<"all" | "completed" | "pending" | "failed">("all");
 
   useEffect(() => {
-    fetchPayments();
-  }, []);
+    // Initialize with mock payment data
+    const mockPayments: Payment[] = [
+      {
+        id: "TXN-001",
+        customer: "John Smith",
+        table: "Table 5",
+        amount: 45.75,
+        method: "credit",
+        status: "completed",
+        timestamp: "2024-06-20 19:30:22",
+        items: ["Pad Thai", "Green Curry", "Thai Iced Tea"]
+      },
+      {
+        id: "TXN-002",
+        customer: "Sarah Johnson",
+        table: "Table 3",
+        amount: 32.50,
+        method: "cash",
+        status: "completed",
+        timestamp: "2024-06-20 18:45:10",
+        items: ["Massaman Curry", "Mango Sticky Rice"]
+      },
+      {
+        id: "TXN-003",
+        customer: "Michael Chen",
+        table: "Table 7",
+        amount: 58.20,
+        method: "mobile",
+        status: "pending",
+        timestamp: "2024-06-20 20:15:33",
+        items: ["Tom Yum Soup", "Chicken Satay", "Singha Beer"]
+      },
+      {
+        id: "TXN-004",
+        customer: "Emily Davis",
+        table: "Table 2",
+        amount: 28.90,
+        method: "credit",
+        status: "completed",
+        timestamp: "2024-06-20 17:20:15",
+        items: ["Vegetable Stir Fry", "Coconut Ice Cream"]
+      },
+      {
+        id: "TXN-005",
+        customer: "Robert Wilson",
+        table: "Table 9",
+        amount: 42.30,
+        method: "mobile",
+        status: "failed",
+        timestamp: "2024-06-20 19:10:45",
+        items: ["Pad Thai", "Thai Beer"]
+      }
+    ];
 
-  const fetchPayments = () => {
-    try {
-      const paymentData = paymentService.getPayments();
-      setPayments(paymentData);
-    } catch (error) {
-      toast.error("Failed to load payments");
-      console.error("Error fetching payments:", error);
-    }
-  };
+    setPayments(mockPayments);
+  }, []);
 
   const filteredPayments = payments.filter(payment => {
     const matchesSearch = payment.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -76,7 +120,7 @@ export default function PaymentsPage() {
   const totalRevenue = payments
     .filter(p => p.status === "completed")
     .reduce((sum, payment) => sum + payment.amount, 0);
-    
+
   const pendingPayments = payments.filter(p => p.status === "pending").length;
   const failedPayments = payments.filter(p => p.status === "failed").length;
 
@@ -163,16 +207,16 @@ export default function PaymentsPage() {
                 <div className="mb-4 flex flex-col sm:flex-row gap-3">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                    <Input 
-                      placeholder="Search payments..." 
-                      value={searchTerm} 
-                      onChange={(e) => setSearchTerm(e.target.value)} 
-                      className="pl-10" 
+                    <Input
+                      placeholder="Search payments..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-10"
                     />
                   </div>
                   <div>
-                    <select 
-                      value={filterStatus} 
+                    <select
+                      value={filterStatus}
                       onChange={(e) => setFilterStatus(e.target.value as any)}
                       className="block w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     >
@@ -228,7 +272,7 @@ export default function PaymentsPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Payment Actions */}
           <div className="space-y-6">
             <Card>
@@ -247,7 +291,7 @@ export default function PaymentsPage() {
                 </Button>
               </CardContent>
             </Card>
-            
+
             {/* Payment Methods */}
             <Card>
               <CardHeader>
@@ -285,7 +329,7 @@ export default function PaymentsPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Recent Activity */}
             <Card>
               <CardHeader>

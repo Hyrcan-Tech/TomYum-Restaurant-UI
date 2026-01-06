@@ -28,45 +28,35 @@ export default function ChargingPage() {
   const [lowBatteryRobots, setLowBatteryRobots] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchChargingData();
-  }, []);
+    // Initialize with mock data
+    const mockStations: ChargingStation[] = [
+      {
+        id: 1,
+        name: "Station Alpha",
+        status: "charging",
+        robotId: 3,
+        robotName: "Robot Gamma",
+        batteryLevel: 30,
+        chargingRate: 85,
+        timeRemaining: "12 min"
+      },
+      { id: 2, name: "Station Beta", status: "available" },
+      { id: 3, name: "Station Gamma", status: "offline" }
+    ];
 
-  const fetchChargingData = async () => {
-    try {
-      // In a real implementation, we would fetch this data from the API
-      // For now, we'll use mock data
-      const mockStations: ChargingStation[] = [
-        { 
-          id: 1, 
-          name: "Station Alpha", 
-          status: "charging", 
-          robotId: 3, 
-          robotName: "Robot Gamma", 
-          batteryLevel: 30, 
-          chargingRate: 85, 
-          timeRemaining: "12 min" 
-        },
-        { id: 2, name: "Station Beta", status: "available" },
-        { id: 3, name: "Station Gamma", status: "offline" }
-      ];
-      
-      setChargingStations(mockStations);
-      
-      // Mock robot data
-      const mockRobots = [
-        { id: 1, name: "Robot Alpha", battery: 85 },
-        { id: 2, name: "Robot Beta", battery: 92 },
-        { id: 3, name: "Robot Gamma", battery: 28 },
-        { id: 4, name: "Robot Delta", battery: 35 }
-      ];
-      
-      setRobots(mockRobots);
-      setLowBatteryRobots(mockRobots.filter(r => r.battery < 40));
-    } catch (error) {
-      toast.error("Failed to load charging data");
-      console.error("Error fetching charging data:", error);
-    }
-  };
+    setChargingStations(mockStations);
+
+    // Mock robot data
+    const mockRobots = [
+      { id: 1, name: "Robot Alpha", battery: 85 },
+      { id: 2, name: "Robot Beta", battery: 92 },
+      { id: 3, name: "Robot Gamma", battery: 28 },
+      { id: 4, name: "Robot Delta", battery: 35 }
+    ];
+
+    setRobots(mockRobots);
+    setLowBatteryRobots(mockRobots.filter(r => r.battery < 40));
+  }, []);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -88,8 +78,38 @@ export default function ChargingPage() {
 
   const handleSendToCharge = async (robotId: number) => {
     try {
-      await robotService.requestManualCharging({ robot_id: `R${robotId}` });
-      toast.success(`Charging request sent for Robot ${robotId}`);
+      // Find the robot
+      const robot = robots.find(r => r.id === robotId);
+      if (!robot) return;
+
+      // Find an available charging station
+      const availableStation = chargingStations.find(s => s.status === "available");
+      if (!availableStation) {
+        toast.error("No available charging stations");
+        return;
+      }
+
+      // Update station status
+      setChargingStations(chargingStations.map(station =>
+        station.id === availableStation.id
+          ? {
+              ...station,
+              status: "charging",
+              robotId: robotId,
+              robotName: robot.name,
+              batteryLevel: robot.battery,
+              chargingRate: 85,
+              timeRemaining: "15 min"
+            }
+          : station
+      ));
+
+      // Update robot battery (simulate charging)
+      setRobots(robots.map(r =>
+        r.id === robotId ? { ...r, battery: r.battery + 10 } : r
+      ));
+
+      toast.success(`Charging request sent for ${robot.name}`);
     } catch (error) {
       toast.error("Failed to send robot to charge");
     }
@@ -104,8 +124,8 @@ export default function ChargingPage() {
             <p className="text-gray-600 mt-2">Monitor and control robot charging stations</p>
           </div>
           <div className="flex gap-2 mt-4 md:mt-0">
-            <Button 
-              onClick={() => setIsChargingEnabled(!isChargingEnabled)} 
+            <Button
+              onClick={() => setIsChargingEnabled(!isChargingEnabled)}
               className={isChargingEnabled ? "bg-red-500 hover:bg-red-600" : "bg-green-500 hover:bg-green-600"}
             >
               {isChargingEnabled ? (
@@ -191,7 +211,7 @@ export default function ChargingPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Low Battery Robots */}
             <Card>
               <CardHeader>
@@ -215,8 +235,8 @@ export default function ChargingPage() {
                           </div>
                           <div className="text-xs text-gray-500">Battery</div>
                         </div>
-                        <Button 
-                          size="sm" 
+                        <Button
+                          size="sm"
                           onClick={() => handleSendToCharge(robot.id)}
                         >
                           Send to Charge
@@ -228,7 +248,7 @@ export default function ChargingPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Charging Details */}
           <div className="space-y-6">
             {/* Active Charging */}
@@ -268,7 +288,7 @@ export default function ChargingPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Charging Schedule */}
             <Card>
               <CardHeader>
@@ -300,7 +320,7 @@ export default function ChargingPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Charging Policies */}
             <Card>
               <CardHeader>
