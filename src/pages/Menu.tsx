@@ -11,9 +11,10 @@ import { MadeWithDyad } from "@/components/made-with-dyad";
 import { menuService } from "@/lib/menu-service";
 import { MenuItem } from "@/lib/menu-data";
 import { toast } from "sonner";
+import { useMenu } from "@/lib/menu-context";
 
 export default function MenuPage() {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const { menuItems, addMenuItem, updateMenuItem, deleteMenuItem } = useMenu();
   const [editingItem, setEditingItem] = useState<MenuItem | null>(null);
   const [newItem, setNewItem] = useState<Omit<MenuItem, 'id'>>({
     name: "",
@@ -25,20 +26,6 @@ export default function MenuPage() {
     vegetarian: false
   });
 
-  useEffect(() => {
-    fetchMenuItems();
-  }, []);
-
-  const fetchMenuItems = () => {
-    try {
-      const menuData = menuService.getMenuItems();
-      setMenuItems(menuData);
-    } catch (error) {
-      toast.error("Failed to load menu items");
-      console.error("Error fetching menu items:", error);
-    }
-  };
-
   const handleEdit = (item: MenuItem) => {
     setEditingItem(item);
   };
@@ -46,9 +33,9 @@ export default function MenuPage() {
   const handleSave = () => {
     if (editingItem) {
       try {
-        menuService.updateMenuItem(editingItem);
+        updateMenuItem(editingItem);
         setEditingItem(null);
-        fetchMenuItems(); // Refresh the list
+        toast.success("Menu item updated");
       } catch (error) {
         toast.error("Failed to save menu item");
       }
@@ -61,8 +48,8 @@ export default function MenuPage() {
 
   const handleDelete = (id: number) => {
     try {
-      menuService.deleteMenuItem(id);
-      fetchMenuItems(); // Refresh the list
+      deleteMenuItem(id);
+      toast.success("Menu item deleted");
     } catch (error) {
       toast.error("Failed to delete menu item");
     }
@@ -73,9 +60,9 @@ export default function MenuPage() {
       toast.error("Please fill in all required fields");
       return;
     }
-    
+
     try {
-      menuService.addMenuItem(newItem);
+      addMenuItem(newItem);
       setNewItem({
         name: "",
         description: "",
@@ -85,7 +72,7 @@ export default function MenuPage() {
         popular: false,
         vegetarian: false
       });
-      fetchMenuItems(); // Refresh the list
+      toast.success("Menu item added");
     } catch (error) {
       toast.error("Failed to add menu item");
     }
@@ -131,68 +118,68 @@ export default function MenuPage() {
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor={`name-${item.id}`}>Name</Label>
-                              <Input 
-                                id={`name-${item.id}`} 
-                                value={editingItem.name} 
-                                onChange={(e) => handleInputChange("name", e.target.value)} 
+                              <Input
+                                id={`name-${item.id}`}
+                                value={editingItem.name}
+                                onChange={(e) => handleInputChange("name", e.target.value)}
                               />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor={`price-${item.id}`}>Price ($)</Label>
-                              <Input 
-                                id={`price-${item.id}`} 
-                                type="number" 
-                                step="0.01" 
-                                value={editingItem.price} 
-                                onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)} 
+                              <Input
+                                id={`price-${item.id}`}
+                                type="number"
+                                step="0.01"
+                                value={editingItem.price}
+                                onChange={(e) => handleInputChange("price", parseFloat(e.target.value) || 0)}
                               />
                             </div>
                           </div>
                           <div className="space-y-2">
                             <Label htmlFor={`description-${item.id}`}>Description</Label>
-                            <Textarea 
-                              id={`description-${item.id}`} 
-                              value={editingItem.description} 
-                              onChange={(e) => handleInputChange("description", e.target.value)} 
-                              rows={2} 
+                            <Textarea
+                              id={`description-${item.id}`}
+                              value={editingItem.description}
+                              onChange={(e) => handleInputChange("description", e.target.value)}
+                              rows={2}
                             />
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div className="space-y-2">
                               <Label htmlFor={`category-${item.id}`}>Category</Label>
-                              <Input 
-                                id={`category-${item.id}`} 
-                                value={editingItem.category} 
-                                onChange={(e) => handleInputChange("category", e.target.value)} 
+                              <Input
+                                id={`category-${item.id}`}
+                                value={editingItem.category}
+                                onChange={(e) => handleInputChange("category", e.target.value)}
                               />
                             </div>
                             <div className="space-y-2">
                               <Label htmlFor={`subcategory-${item.id}`}>Subcategory</Label>
-                              <Input 
-                                id={`subcategory-${item.id}`} 
-                                value={editingItem.subcategory} 
-                                onChange={(e) => handleInputChange("subcategory", e.target.value)} 
+                              <Input
+                                id={`subcategory-${item.id}`}
+                                value={editingItem.subcategory}
+                                onChange={(e) => handleInputChange("subcategory", e.target.value)}
                               />
                             </div>
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="flex items-center space-x-2">
-                              <input 
-                                type="checkbox" 
-                                id={`popular-${item.id}`} 
-                                checked={editingItem.popular} 
-                                onChange={(e) => handleInputChange("popular", e.target.checked)} 
-                                className="h-4 w-4" 
+                              <input
+                                type="checkbox"
+                                id={`popular-${item.id}`}
+                                checked={editingItem.popular}
+                                onChange={(e) => handleInputChange("popular", e.target.checked)}
+                                className="h-4 w-4"
                               />
                               <Label htmlFor={`popular-${item.id}`}>Popular Item</Label>
                             </div>
                             <div className="flex items-center space-x-2">
-                              <input 
-                                type="checkbox" 
-                                id={`vegetarian-${item.id}`} 
-                                checked={editingItem.vegetarian} 
-                                onChange={(e) => handleInputChange("vegetarian", e.target.checked)} 
-                                className="h-4 w-4" 
+                              <input
+                                type="checkbox"
+                                id={`vegetarian-${item.id}`}
+                                checked={editingItem.vegetarian}
+                                onChange={(e) => handleInputChange("vegetarian", e.target.checked)}
+                                className="h-4 w-4"
                               />
                               <Label htmlFor={`vegetarian-${item.id}`}>Vegetarian</Label>
                             </div>
@@ -247,7 +234,7 @@ export default function MenuPage() {
               </CardContent>
             </Card>
           </div>
-          
+
           {/* Add New Item */}
           <div className="space-y-6">
             <Card>
@@ -259,73 +246,73 @@ export default function MenuPage() {
               <CardContent className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="new-name">Name</Label>
-                  <Input 
-                    id="new-name" 
-                    value={newItem.name} 
-                    onChange={(e) => handleNewInputChange("name", e.target.value)} 
-                    placeholder="e.g., Tom Yum Soup" 
+                  <Input
+                    id="new-name"
+                    value={newItem.name}
+                    onChange={(e) => handleNewInputChange("name", e.target.value)}
+                    placeholder="e.g., Tom Yum Soup"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="new-description">Description</Label>
-                  <Textarea 
-                    id="new-description" 
-                    value={newItem.description} 
-                    onChange={(e) => handleNewInputChange("description", e.target.value)} 
-                    placeholder="Describe the item..." 
-                    rows={3} 
+                  <Textarea
+                    id="new-description"
+                    value={newItem.description}
+                    onChange={(e) => handleNewInputChange("description", e.target.value)}
+                    placeholder="Describe the item..."
+                    rows={3}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-price">Price ($)</Label>
-                    <Input 
-                      id="new-price" 
-                      type="number" 
-                      step="0.01" 
-                      value={newItem.price || ""} 
-                      onChange={(e) => handleNewInputChange("price", parseFloat(e.target.value) || 0)} 
-                      placeholder="0.00" 
+                    <Input
+                      id="new-price"
+                      type="number"
+                      step="0.01"
+                      value={newItem.price || ""}
+                      onChange={(e) => handleNewInputChange("price", parseFloat(e.target.value) || 0)}
+                      placeholder="0.00"
                     />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="new-category">Category</Label>
-                    <Input 
-                      id="new-category" 
-                      value={newItem.category} 
-                      onChange={(e) => handleNewInputChange("category", e.target.value)} 
-                      placeholder="e.g., Soups" 
+                    <Input
+                      id="new-category"
+                      value={newItem.category}
+                      onChange={(e) => handleNewInputChange("category", e.target.value)}
+                      placeholder="e.g., Soups"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="new-subcategory">Subcategory</Label>
-                    <Input 
-                      id="new-subcategory" 
-                      value={newItem.subcategory} 
-                      onChange={(e) => handleNewInputChange("subcategory", e.target.value)} 
-                      placeholder="e.g., Spicy" 
+                    <Input
+                      id="new-subcategory"
+                      value={newItem.subcategory}
+                      onChange={(e) => handleNewInputChange("subcategory", e.target.value)}
+                      placeholder="e.g., Spicy"
                     />
                   </div>
                   <div className="flex items-center space-x-2">
-                    <input 
-                      type="checkbox" 
-                      id="new-popular" 
-                      checked={newItem.popular} 
-                      onChange={(e) => handleNewInputChange("popular", e.target.checked)} 
-                      className="h-4 w-4" 
+                    <input
+                      type="checkbox"
+                      id="new-popular"
+                      checked={newItem.popular}
+                      onChange={(e) => handleNewInputChange("popular", e.target.checked)}
+                      className="h-4 w-4"
                     />
                     <Label htmlFor="new-popular">Popular Item</Label>
                   </div>
                 </div>
                 <div className="flex items-center space-x-2">
-                  <input 
-                    type="checkbox" 
-                    id="new-vegetarian" 
-                    checked={newItem.vegetarian} 
-                    onChange={(e) => handleNewInputChange("vegetarian", e.target.checked)} 
-                    className="h-4 w-4" 
+                  <input
+                    type="checkbox"
+                    id="new-vegetarian"
+                    checked={newItem.vegetarian}
+                    onChange={(e) => handleNewInputChange("vegetarian", e.target.checked)}
+                    className="h-4 w-4"
                   />
                   <Label htmlFor="new-vegetarian">Vegetarian</Label>
                 </div>
@@ -334,7 +321,7 @@ export default function MenuPage() {
                 </Button>
               </CardContent>
             </Card>
-            
+
             {/* Menu Categories */}
             <Card>
               <CardHeader>
@@ -353,7 +340,7 @@ export default function MenuPage() {
                 </div>
               </CardContent>
             </Card>
-            
+
             {/* Menu Stats */}
             <Card>
               <CardHeader>
