@@ -5,13 +5,13 @@ import threading
 import time
 import webbrowser
 
-def run_flask_server():
-    """Run the Flask backend server"""
-    print("Starting Flask server...")
+def run_fastapi_server():
+    """Run the FastAPI backend server"""
+    print("Starting FastAPI server...")
     try:
-        subprocess.run(['python', 'app.py'], check=True)
+        subprocess.run(['uvicorn', 'app:app', '--host', '0.0.0.0', '--port', '8000', '--reload'], check=True)
     except subprocess.CalledProcessError:
-        print("Error: Failed to start Flask server")
+        print("Error: Failed to start FastAPI server")
         return False
 
 def build_and_serve():
@@ -27,22 +27,22 @@ def build_and_serve():
             print("Error: Failed to build frontend")
             return False
     
-    # Start Flask server in a separate thread
+    # Start FastAPI server in a separate thread
     print("Starting backend server...")
-    server_thread = threading.Thread(target=run_flask_server)
+    server_thread = threading.Thread(target=run_fastapi_server)
     server_thread.daemon = True
     server_thread.start()
     
     # Wait a moment for server to start
-    time.sleep(3)
+    time.sleep(5)
     
     # Open browser
     print("Opening application in browser...")
-    webbrowser.open('http://localhost:5000')
+    webbrowser.open('http://localhost:8000')
     
     print("\nTom Yum Robot Control Center is running!")
-    print("Frontend: http://localhost:5000")
-    print("Backend API: http://localhost:5000/api")
+    print("Frontend: http://localhost:8000")
+    print("Backend API: http://localhost:8000/api")
     print("\nPress Ctrl+C to stop the server")
     
     try:
