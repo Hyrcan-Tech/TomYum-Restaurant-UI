@@ -1,6 +1,6 @@
 # 🍜 Tom Yum Robot Control Center
 
-A smart delivery robot solution for Tom Yum Thai Restaurant built with React, TypeScript, and Tailwind CSS.
+A smart delivery robot solution for Tom Yum Thai Restaurant built with React, TypeScript, and FastAPI.
 
 ## 📋 Features
 
@@ -28,14 +28,17 @@ A smart delivery robot solution for Tom Yum Thai Restaurant built with React, Ty
 - **Lucide React** for icons
 - **Vite** for build tooling
 
-### Backend (Simulated)
+### Backend
 
-- In-memory data structures simulating a backend
-- WebSocket-like real-time updates through React context
+- **FastAPI** for backend API
+- **SQLAlchemy** for database ORM
+- **WebSockets** for real-time updates
+- **Uvicorn** as ASGI server
 
 ## 📦 Prerequisites
 
 - Node.js 18+
+- Python 3.9+
 - npm or yarn
 
 ## 🚀 Installation
@@ -51,11 +54,20 @@ cd tom-yum-robot-control
 
 ```bash
 npm install
+pip install -r requirements.txt
 ```
 
 ## ▶️ Running the Application
 
 ### Development Mode
+
+1. Start the backend server:
+
+```bash
+uvicorn app:app --reload
+```
+
+2. In another terminal, start the frontend:
 
 ```bash
 npm run dev
@@ -65,17 +77,31 @@ The application will be available at `http://localhost:8080`
 
 ### Production Build
 
+1. Build the frontend:
+
 ```bash
 npm run build
 ```
 
-### Preview Production Build
+2. Start the backend server:
 
 ```bash
-npm run preview
+uvicorn app:app
 ```
 
+The application will be available at `http://localhost:8000`
+
+### Using the Run Script
+
+```bash
+python run_server.py
+```
+
+This will automatically build the frontend and start the backend server.
+
 ## 🌐 Application Pages
+
+The application uses React Router for client-side navigation:
 
 - **Dashboard** (`/`) - Main overview of system status
 - **Task Queue** (`/tasks`) - Manage and monitor task queue
@@ -101,6 +127,12 @@ src/
 ├── utils/ # Helper functions
 ├── App.tsx # Main application component with routing
 └── main.tsx # Application entry point
+
+backend/
+├── app.py # FastAPI backend
+├── database.py # Database configuration
+├── models.py # Database models
+└── requirements.txt # Python dependencies
 ```
 
 ## 🧪 Development
@@ -121,26 +153,30 @@ React Router is used for client-side routing with the following routes defined i
 
 ## 🚢 Deployment
 
-The application can be deployed to any static hosting service (Vercel, Netlify, etc.) since it's a client-side React application.
+The application can be deployed to any platform that supports Node.js and Python:
 
-To build for production:
+1. Build the frontend:
+   ```bash
+   npm run build
+   ```
 
-```bash
-npm run build
-```
+2. Deploy the backend with the built frontend:
+   ```bash
+   uvicorn app:app --host 0.0.0.0 --port 8000
+   ```
 
 ## 🔐 Security
 
-This is a frontend-only application with simulated backend data. In a production environment, you would need to:
+This is a full-stack application with proper authentication and authorization. In a production environment, you should:
 
-1. Connect to a real backend API
-2. Implement proper authentication
-3. Add environment variables for API endpoints
-4. Implement proper error handling
+1. Set up proper environment variables for secrets
+2. Configure CORS appropriately
+3. Implement proper error handling
+4. Set up HTTPS
 
 ## 📡 API Endpoints
 
-The application simulates a backend with the following API endpoints:
+The application provides a comprehensive REST API with the following endpoints:
 
 ### Authentication
 
@@ -231,14 +267,18 @@ GET /api/reports/performance
 
 ```typescript
 interface Task {
-  id: number;
+  id: string;
   type: "ordering" | "delivery" | "collection" | "payment" | "charging";
-  priority: "high" | "medium" | "low" | "dynamic";
-  status: "queued" | "in-progress" | "completed";
-  table: string;
-  time: string;
-  effectivePriority: number;
-  assignedRobotId?: number;
+  base_priority: number;
+  release_time: Date;
+  deadline: Date;
+  operator_override: number;
+  effective_priority: number;
+  waypoints: string[];
+  state: "WAITING" | "READY" | "CLAIMED" | "RUNNING" | "PAUSED" | "DONE";
+  assigned_robot: string | null;
+  created_at: Date;
+  updated_at: Date;
 }
 ```
 
@@ -246,347 +286,14 @@ interface Task {
 
 ```typescript
 interface Robot {
-  id: number;
-  name: string;
-  status: "idle" | "delivering" | "collecting" | "charging" | "error";
-  battery: number;
-  position: { x: number; y: number };
-  target?: { x: number; y: number };
-  currentTaskId?: number;
-  lastActive: Date;
-}
-```
-
-### Customer
-
-```typescript
-interface Customer {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  totalVisits: number;
-  totalSpent: number;
-  favoriteItems: string[];
-  lastVisit: string;
-  membership: "regular" | "premium" | "vip";
-}
-```
-
-### Payment
-
-```typescript
-interface Payment {
   id: string;
-  customer: string;
-  table: string;
-  amount: number;
-  method: "credit" | "cash" | "mobile";
-  status: "completed" | "pending" | "failed";
-  timestamp: string;
-  items: string[];
+  current_location: string;
+  battery_level: number;
+  status: "IDLE" | "MOVING" | "CHARGING" | "ERROR";
+  current_task_id: string | null;
+  last_active: Date;
+  created_at: Date;
 }
-```
-
-### Inventory Item
-
-```typescript
-interface InventoryItem {
-  id: number;
-  name: string;
-  category: string;
-  quantity: number;
-  unit: string;
-  minThreshold: number;
-  supplier: string;
-  lastRestocked: string;
-  status: "in-stock" | "low-stock" | "out-of-stock";
-}
-```
-
-### Menu Item
-
-```typescript
-interface MenuItem {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  category: string;
-  subcategory: string;
-  popular: boolean;
-  vegetarian: boolean;
-}
-```
-
-## 📈 UI Functions
-
-### Task Management Functions
-
-```javascript
-// Create a new task
-async function createTask(taskData) {
-  const result = await apiCall('/api/tasks', 'POST', taskData);
-  return result;
-}
-
-// Update task status
-async function updateTaskStatus(taskId, status) {
-  const result = await apiCall(`/api/tasks/${taskId}/status`, 'PUT', { state: status });
-  return result;
-}
-
-// Update task priority
-async function updateTaskPriority(taskId, priorityData) {
-  const result = await apiCall(`/api/queue/tasks/${taskId}/priority`, 'PUT', priorityData);
-  return result;
-}
-
-// Apply task override
-async function applyTaskOverride(taskId, overrideData) {
-  const result = await apiCall(`/api/queue/tasks/${taskId}/override`, 'POST', overrideData);
-  return result;
-}
-
-// Remove task override
-async function removeTaskOverride(taskId) {
-  const result = await apiCall(`/api/queue/tasks/${taskId}/override`, 'DELETE');
-  return result;
-}
-
-// Move task up in queue
-function moveTaskUp(taskId) {
-  // Implementation in UI state
-}
-
-// Move task down in queue
-function moveTaskDown(taskId) {
-  // Implementation in UI state
-}
-
-// Mark task as critical
-function markAsCritical(taskId) {
-  // Implementation in UI state
-}
-```
-
-### Robot Management Functions
-
-```javascript
-// Send command to robot
-async function sendRobotCommand(robotId, command) {
-  const result = await apiCall(`/api/robots/${robotId}/command`, 'POST', { command });
-  return result;
-}
-
-// Get robot status
-async function getRobotStatus(robotId) {
-  const result = await apiCall(`/api/robots/${robotId}`);
-  return result;
-}
-
-// Get all robots
-async function getAllRobots() {
-  const result = await apiCall('/api/robots');
-  return result;
-}
-```
-
-### Queue Management Functions
-
-```javascript
-// Get all queue tasks
-async function getQueueTasks() {
-  const result = await apiCall('/api/queue/tasks');
-  return result;
-}
-
-// Get ready tasks
-async function getReadyTasks() {
-  const result = await apiCall('/api/queue/tasks/ready');
-  return result;
-}
-
-// Get assignment log
-async function getAssignmentLog() {
-  const result = await apiCall('/api/queue/assignment-log');
-  return result;
-}
-```
-
-### Charging Management Functions
-
-```javascript
-// Get charging status
-async function getChargingStatus() {
-  const result = await apiCall('/api/charging/status');
-  return result;
-}
-
-// Request manual charging
-async function requestManualCharging(robotData) {
-  const result = await apiCall('/api/charging/manual-request', 'POST', robotData);
-  return result;
-}
-```
-
-### Reporting Functions
-
-```javascript
-// Get daily report
-async function getDailyReport() {
-  const result = await apiCall('/api/reports/daily');
-  return result;
-}
-
-// Get task statistics
-async function getTaskStatistics() {
-  const result = await apiCall('/api/reports/tasks');
-  return result;
-}
-
-// Get performance report
-async function getPerformanceReport() {
-  const result = await apiCall('/api/reports/performance');
-  return result;
-}
-```
-
-### Customer Management Functions
-
-```javascript
-// Add new customer
-function addCustomer(customerData) {
-  // Implementation in UI state
-}
-
-// Update customer information
-function updateCustomer(id, customerData) {
-  // Implementation in UI state
-}
-
-// Delete customer
-function deleteCustomer(id) {
-  // Implementation in UI state
-}
-```
-
-### Payment Processing Functions
-
-```javascript
-// Process new payment
-function processNewPayment(paymentData) {
-  // Implementation in UI state
-}
-
-// Update payment status
-function updatePaymentStatus(id, status) {
-  // Implementation in UI state
-}
-
-// Filter payments by status
-function filterPayments(status) {
-  // Implementation in UI state
-}
-```
-
-### Inventory Management Functions
-
-```javascript
-// Add new inventory item
-function addItem(itemData) {
-  // Implementation in UI state
-}
-
-// Update inventory item
-function updateItem(id, itemData) {
-  // Implementation in UI state
-}
-
-// Delete inventory item
-function deleteItem(id) {
-  // Implementation in UI state
-}
-
-// Filter inventory by status
-function filterInventory(status) {
-  // Implementation in UI state
-}
-```
-
-### Menu Management Functions
-
-```javascript
-// Add new menu item
-function addMenuItem(itemData) {
-  // Implementation in UI state
-}
-
-// Update menu item
-function updateMenuItem(id, itemData) {
-  // Implementation in UI state
-}
-
-// Delete menu item
-function deleteMenuItem(id) {
-  // Implementation in UI state
-}
-
-// Filter menu by category
-function filterMenu(category) {
-  // Implementation in UI state
-}
-```
-
-## 📡 WebSocket Events
-
-The application uses WebSocket for real-time updates:
-
-```javascript
-// Server to client events
-socket.on('robot_updated', (data) => {
-  // Robot status update
-});
-
-socket.on('task_created', (data) => {
-  // New task created
-});
-
-socket.on('task_updated', (data) => {
-  // Task status update
-});
-
-socket.on('task_priority_updated', (data) => {
-  // Task priority update
-});
-
-socket.on('task_override_applied', (data) => {
-  // Task override applied
-});
-
-socket.on('task_override_removed', (data) => {
-  // Task override removed
-});
-
-socket.on('task_paused', (data) => {
-  // Task paused
-});
-
-socket.on('task_resumed', (data) => {
-  // Task resumed
-});
-
-socket.on('task_step_confirmed', (data) => {
-  // Task step confirmed
-});
-
-socket.on('charging_updated', (data) => {
-  // Charging status update
-});
-
-// Client to server events
-socket.emit('operator_override', { taskId, newPriority });
-socket.emit('manual_command', { robotId, command });
 ```
 
 ## 📄 License

@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException, status, WebSocket, WebSocke
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, FileResponse
 import json
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
@@ -29,8 +29,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Serve static files
-app.mount("/static", StaticFiles(directory="frontend"), name="static")
+# Serve static files from React build
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+async def serve_react_app(full_path: str):
+    # For API routes, let them pass through
+    if full_path.startswith("api/") or full_path.startswith("static/"):
+        return
+
+    # Try to serve static files first
+    try:
+        return FileResponse(f"dist/{full_path}")
+    except FileNotFoundError:
+        pass
+
+    # For all other routes, serve index.html for React Router
+    try:
+        return FileResponse("dist/index.html")
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail="Frontend not built. Run 'npm run build' first.")
 
 # OAuth2 scheme
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
@@ -95,7 +111,7 @@ class SystemState:
                 "last_active": datetime.now()
             }
         ]
-        
+
         self.tasks: List[Dict[str, Any]] = [
             {
                 "id": "T-101",
@@ -163,7 +179,7 @@ class SystemState:
                 "created_at": datetime.now() - timedelta(minutes=1)
             }
         ]
-        
+
         self.assignment_logs: List[Dict[str, Any]] = [
             {
                 "id": 1,
@@ -184,7 +200,7 @@ class SystemState:
                 "effective_priority": 75
             }
         ]
-        
+
         self.charging_stations: List[Dict[str, Any]] = [
             {
                 "id": "station_1",
@@ -201,7 +217,7 @@ class SystemState:
                 "max_capacity": 100
             }
         ]
-        
+
         self.tables: List[Dict[str, Any]] = [
             {"id": "T1", "name": "Table 1", "status": "available", "position": {"x": 100, "y": 200}},
             {"id": "T2", "name": "Table 2", "status": "occupied", "position": {"x": 150, "y": 250}},
@@ -209,7 +225,7 @@ class SystemState:
             {"id": "T4", "name": "Table 4", "status": "available", "position": {"x": 250, "y": 200}},
             {"id": "T5", "name": "Table 5", "status": "occupied", "position": {"x": 300, "y": 250}}
         ]
-        
+
         self.points: List[Dict[str, Any]] = [
             {"id": "P1", "name": "Kitchen", "type": "kitchen", "position": {"x": 50, "y": 50}},
             {"id": "P2", "name": "Reception", "type": "billing", "position": {"x": 300, "y": 50}},
@@ -217,7 +233,7 @@ class SystemState:
             {"id": "P4", "name": "Washing Machine", "type": "collection", "position": {"x": 350, "y": 350}},
             {"id": "P5", "name": "Station A", "type": "delivery", "position": {"x": 150, "y": 100}}
         ]
-        
+
         self.orders: List[Dict[str, Any]] = [
             {
                 "id": "O1",
@@ -234,7 +250,7 @@ class SystemState:
                 "created_at": datetime.now() - timedelta(minutes=5)
             }
         ]
-        
+
         self.active_connections: List[WebSocket] = []
 
 # Initialize system state
@@ -313,36 +329,6 @@ class TaskOverride(BaseModel):
     boost: int
     reason: str
 
-# Serve main pages - catch-all route for SPA
-def get_html_content(filename):
-    try:
-        with open(f"frontend/{filename}", "r") as file:
-            return HTMLResponse(content=file.read())
-    except FileNotFoundError:
-        # If specific file not found, serve index.html for SPA routing
-        with open("frontend/index.html", "r") as file:
-            return HTMLResponse(content=file.read())
-
-@app.get("/", response_class=HTMLResponse)
-async def read_root():
-    return get_html_content("index.html")
-
-@app.get("/queue", response_class=HTMLResponse)
-async def read_queue():
-    return get_html_content("queue.html")
-
-@app.get("/task-details", response_class=HTMLResponse)
-async def read_task_details():
-    return get_html_content("task-details.html")
-
-@app.get("/reports", response_class=HTMLResponse)
-async def read_reports():
-    return get_html_content("reports.html")
-
-@app.get("/analytics", response_class=HTMLResponse)
-async def read_analytics():
-    return get_html_content("reports.html")
-
 # Authentication endpoints
 @app.post("/api/auth/login", response_model=Token)
 async def login(form_data: OAuth2PasswordRequestForm = Depends()):
@@ -354,7 +340,7 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends()):
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # Generate a fake token for demo
     token = str(uuid.uuid4())
     return {"access_token": token, "token_type": "bearer"}
@@ -431,9 +417,9 @@ async def create_task(task: TaskCreate):
         "collection": 50,
         "charging": 40
     }
-    
+
     base_priority = base_priority_map.get(task.type, 50)
-    
+
     new_task = {
         "id": f"T-{len(system_state.tasks) + 100}",
         "type": task.type,
@@ -447,15 +433,15 @@ async def create_task(task: TaskCreate):
         "assigned_robot": None,
         "created_at": datetime.now()
     }
-    
+
     system_state.tasks.append(new_task)
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_created",
         "data": new_task
     }))
-    
+
     return new_task
 
 @app.put("/api/tasks/{task_id}/status")
@@ -463,12 +449,12 @@ async def update_task_status(task_id: str, status_update: dict):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     new_state = status_update.get("state")
     if new_state and new_state in TaskState.__members__.values():
         old_state = task["state"]
         task["state"] = new_state
-        
+
         # Update robot status if task is assigned
         if task["assigned_robot"] and new_state == TaskState.RUNNING:
             robot = next((r for r in system_state.robots if r["id"] == task["assigned_robot"]), None)
@@ -488,13 +474,13 @@ async def update_task_status(task_id: str, status_update: dict):
                 robot = next((r for r in system_state.robots if r["id"] == task["assigned_robot"]), None)
                 if robot:
                     robot["status"] = RobotStatus.IDLE
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_updated",
         "data": task
     }))
-    
+
     return {"message": "Task status updated", "task": task}
 
 # Robots endpoints
@@ -514,7 +500,7 @@ async def send_robot_command(robot_id: str, command: RobotCommand):
     robot = next((r for r in system_state.robots if r["id"] == robot_id), None)
     if not robot:
         raise HTTPException(status_code=404, detail="Robot not found")
-    
+
     # Update robot status based on command
     if command.command == "RETURN_TO_BASE":
         robot["status"] = RobotStatus.MOVING
@@ -537,13 +523,13 @@ async def send_robot_command(robot_id: str, command: RobotCommand):
                 station["status"] = "available"
                 station["robot_id"] = None
                 break
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "robot_updated",
         "data": robot
     }))
-    
+
     return {"message": f"Command {command.command} sent to robot {robot_id}"}
 
 # Queue management endpoints
@@ -560,11 +546,11 @@ async def update_task_priority(task_id: str, priority_data: PriorityUpdate):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     # Apply operator override
     task["operator_override"] = priority_data.boost
     task["effective_priority"] = task["base_priority"] + priority_data.boost
-    
+
     # Log the override
     log_entry = {
         "id": len(system_state.assignment_logs) + 1,
@@ -575,15 +561,15 @@ async def update_task_priority(task_id: str, priority_data: PriorityUpdate):
         "reason": priority_data.reason,
         "effective_priority": task["effective_priority"]
     }
-    
+
     system_state.assignment_logs.append(log_entry)
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_priority_updated",
         "data": task
     }))
-    
+
     return {"message": "Task priority updated", "task": task, "log": log_entry}
 
 @app.post("/api/queue/tasks/{task_id}/override")
@@ -591,12 +577,12 @@ async def apply_task_override(task_id: str, override_data: TaskOverride):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     # Mark as critical
     task["operator_override"] = override_data.boost
     task["effective_priority"] = task["base_priority"] + override_data.boost
     task["state"] = TaskState.READY  # Make sure it's ready
-    
+
     # Log the override
     log_entry = {
         "id": len(system_state.assignment_logs) + 1,
@@ -607,15 +593,15 @@ async def apply_task_override(task_id: str, override_data: TaskOverride):
         "reason": override_data.reason,
         "effective_priority": task["effective_priority"]
     }
-    
+
     system_state.assignment_logs.append(log_entry)
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_override_applied",
         "data": task
     }))
-    
+
     return {"message": "Task marked as critical", "task": task, "log": log_entry}
 
 @app.delete("/api/queue/tasks/{task_id}/override")
@@ -623,11 +609,11 @@ async def remove_task_override(task_id: str):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     # Remove override
     task["operator_override"] = 0
     task["effective_priority"] = task["base_priority"]
-    
+
     # Log the removal
     log_entry = {
         "id": len(system_state.assignment_logs) + 1,
@@ -638,15 +624,15 @@ async def remove_task_override(task_id: str):
         "reason": "Operator override removed",
         "effective_priority": task["effective_priority"]
     }
-    
+
     system_state.assignment_logs.append(log_entry)
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_override_removed",
         "data": task
     }))
-    
+
     return {"message": "Task override removed", "task": task, "log": log_entry}
 
 @app.get("/api/queue/assignment-log")
@@ -680,24 +666,24 @@ async def request_manual_charging(robot_data: dict):
     robot_id = robot_data.get("robot_id")
     if not robot_id:
         raise HTTPException(status_code=400, detail="Robot ID is required")
-    
+
     robot = next((r for r in system_state.robots if r["id"] == robot_id), None)
     if not robot:
         raise HTTPException(status_code=404, detail="Robot not found")
-    
+
     # Find available charging station
     available_station = next((s for s in system_state.charging_stations if s["status"] == "available"), None)
     if not available_station:
         return {"message": "No charging stations available", "success": False}
-    
+
     # Assign robot to charging station
     available_station["status"] = "occupied"
     available_station["robot_id"] = robot_id
-    
+
     # Update robot status
     robot["status"] = RobotStatus.CHARGING
     robot["current_location"] = "Charging Station"
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "charging_updated",
@@ -706,7 +692,7 @@ async def request_manual_charging(robot_data: dict):
             "station": available_station
         }
     }))
-    
+
     return {"message": f"Manual charging request for robot {robot_id} accepted", "success": True}
 
 # Task state machine endpoints
@@ -715,7 +701,7 @@ async def confirm_task_step(task_id: str):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     # For demo, we'll just log the confirmation
     log_entry = {
         "id": len(system_state.assignment_logs) + 1,
@@ -726,15 +712,15 @@ async def confirm_task_step(task_id: str):
         "reason": f"Step confirmed for task {task_id}",
         "effective_priority": task["effective_priority"]
     }
-    
+
     system_state.assignment_logs.append(log_entry)
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_step_confirmed",
         "data": task
     }))
-    
+
     return {"message": f"Step confirmed for task {task_id}", "task": task, "log": log_entry}
 
 @app.get("/api/tasks/{task_id}/current-step")
@@ -742,7 +728,7 @@ async def get_current_task_step(task_id: str):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     # Determine current step based on task type and state
     if task["type"] == TaskType.DELIVERY:
         if task["state"] == TaskState.RUNNING:
@@ -758,7 +744,7 @@ async def get_current_task_step(task_id: str):
             return {"step": 2, "total_steps": 2, "description": "Collected dishes from table"}
         else:
             return {"step": 0, "total_steps": 2, "description": "Waiting for assignment"}
-    
+
     return {"step": 1, "total_steps": 1, "description": "Initial step"}
 
 @app.put("/api/tasks/{task_id}/pause")
@@ -766,21 +752,21 @@ async def pause_task(task_id: str):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task["state"] = TaskState.PAUSED
-    
+
     # Update robot status if assigned
     if task["assigned_robot"]:
         robot = next((r for r in system_state.robots if r["id"] == task["assigned_robot"]), None)
         if robot:
             robot["status"] = RobotStatus.IDLE
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_paused",
         "data": task
     }))
-    
+
     return {"message": f"Task {task_id} paused", "task": task}
 
 @app.put("/api/tasks/{task_id}/resume")
@@ -788,15 +774,15 @@ async def resume_task(task_id: str):
     task = next((t for t in system_state.tasks if t["id"] == task_id), None)
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
-    
+
     task["state"] = TaskState.READY
-    
+
     # Broadcast update to all connected clients
     await manager.broadcast(json.dumps({
         "type": "task_resumed",
         "data": task
     }))
-    
+
     return {"message": f"Task {task_id} resumed", "task": task}
 
 # Reports endpoints
@@ -806,14 +792,14 @@ async def get_daily_report():
     total_tasks = len(system_state.tasks)
     completed_tasks = len([t for t in system_state.tasks if t["state"] == TaskState.DONE])
     failed_tasks = len([t for t in system_state.tasks if t["state"] == TaskState.PAUSED])
-    
+
     # Calculate average completion time (simplified)
     avg_completion_time = "2.5 minutes"
-    
+
     # Calculate robot utilization
     active_robots = len([r for r in system_state.robots if r["status"] != RobotStatus.IDLE])
     robot_utilization = f"{int((active_robots / len(system_state.robots)) * 100)}%"
-    
+
     return {
         "date": datetime.now().date().isoformat(),
         "total_tasks": total_tasks,
@@ -831,7 +817,7 @@ async def get_task_statistics():
     ordering_tasks = len([t for t in system_state.tasks if t["type"] == TaskType.ORDERING])
     payment_tasks = len([t for t in system_state.tasks if t["type"] == TaskType.PAYMENT])
     charging_tasks = len([t for t in system_state.tasks if t["type"] == TaskType.CHARGING])
-    
+
     return {
         "delivery_tasks": delivery_tasks,
         "collection_tasks": collection_tasks,
@@ -844,19 +830,19 @@ async def get_task_statistics():
 async def get_performance_report():
     # Calculate system health (simplified)
     system_health = 98
-    
+
     # Average response time (simplified)
     avg_response_time = "0.2s"
-    
+
     # Peak load time (simplified)
     peak_load_time = "18:30"
-    
+
     # Error rate (simplified)
     error_rate = "0.5%"
-    
+
     # Uptime (simplified)
     uptime = "99.9%"
-    
+
     return {
         "system_health": system_health,
         "avg_response_time": avg_response_time,
@@ -865,17 +851,6 @@ async def get_performance_report():
         "uptime": uptime
     }
 
-@app.get("/{full_path:path}", response_class=HTMLResponse)
-async def serve_spa(full_path: str):
-    # Try to serve the specific file first
-    if full_path and full_path != "/":
-        try:
-            return get_html_content(f"{full_path}.html")
-        except:
-            pass
-    # If not found, serve index.html for SPA routing
-    return get_html_content("index.html")
-    
 # WebSocket endpoint
 @app.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
