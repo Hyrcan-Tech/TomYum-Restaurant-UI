@@ -14,26 +14,18 @@ import {
   ArrowDown, 
   AlertCircle 
 } from "lucide-react";
-import { taskService } from "@/lib/task-service";
-import { queueService } from "@/lib/queue-service";
+import { useRestaurant } from "@/lib/restaurant-context";
 import { toast } from "sonner";
 
 interface Task {
-  id: string;
+  id: number;
   type: "ordering" | "delivery" | "collection" | "payment" | "charging";
   priority: "high" | "medium" | "low" | "dynamic";
-  state: "WAITING" | "READY" | "CLAIMED" | "RUNNING" | "PAUSED" | "DONE";
+  status: "queued" | "in-progress" | "completed";
   table: string;
   time: string;
-  effective_priority: number;
-  base_priority: number;
-  operator_override: number;
-  waypoints: string[];
-  release_time: string;
-  deadline: string;
-  assigned_robot: string | null;
-  created_at: string;
-  updated_at: string;
+  effectivePriority: number;
+  assignedRobotId?: number;
 }
 
 const getTaskIcon = (type: string) => {
@@ -58,80 +50,82 @@ const getPriorityColor = (priority: string) => {
 };
 
 export function TaskQueue() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [selectedTask, setSelectedTask] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { tasks, updateTask, assignTaskToRobot } = useRestaurant();
+  const [selectedTask, setSelectedTask] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    fetchTasks();
+    // No need to fetch data as we're using context
+    setLoading(false);
   }, []);
 
-  const fetchTasks = async () => {
+  const moveTaskUp = (id: number) => {
     try {
-      setLoading(true);
-      const taskData = await queueService.getQueueTasks();
-      // Convert backend task format to frontend format
-      const convertedTasks = taskData.map((task: any) => ({
-        ...task,
-        priority: task.operator_override > 30 ? "high" :
-                  task.effective_priority > 80 ? "high" :
-                  task.effective_priority > 60 ? "medium" : "low",
-        table: task.waypoints[0] || "Unknown",
-        time: "5 min" // Default time, could be calculated from deadline
-      }));
-      setTasks(convertedTasks);
-    } catch (error) {
-      toast.error("Failed to load tasks");
-      console.error("Error fetching tasks:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+      // Find the task index
+      const index = tasks.findIndex(task => task.id === id);
+      if (index <= 0) return;
 
-  const moveTaskUp = async (id: string) => {
-    try {
-      const updatedTasks = taskService.moveTaskUp(tasks, id);
-      // Convert the service tasks back to our component interface with proper typing
-      const convertedTasks = updatedTasks.map(task => ({
-        ...task,
-        priority: task.operator_override > 30 ? "high" :
-                  task.effective_priority > 80 ? "high" :
-                  task.effective_priority > 60 ? "medium" : "low" as "high" | "medium" | "low" | "dynamic",
-        table: task.waypoints[0] || "Unknown",
-        time: "5 min"
-      }));
-      setTasks(convertedTasks);
+      // Swap with previous task
+      const newTasks = [...tasks];
+      [newTasks[index - 1], newTasks[index]] = [newTasks[index], newTasks[index - 1]];
+
+      // Update priorities
+      newTasks[index - 1].effectivePriority += 5;
+      newTasks[index].effectivePriority -= 5;
+
+      // Update tasks in context
+      newTasks.forEach(task => {
+        updateTask(task.id, {
+          effectivePriority: task.effectivePriority
+        });
+      });
+
       toast.success("Task moved up in queue");
     } catch (error) {
       toast.error("Failed to move task");
     }
   };
 
-  const moveTaskDown = async (id: string) => {
+  const moveTaskDown = (id: number) => {
     try {
-      const updatedTasks = taskService.moveTaskDown(tasks, id);
-      // Convert the service tasks back to our component interface with proper typing
-      const convertedTasks = updatedTasks.map(task => ({
-      ...task,
-      priority: task.operator_override > 30 ? "high" :
-                task.effective_priority > 80 ? "high" :
-                task.effective_priority > 60 ? "medium" : "low" as "high" | "medium" | "low" | "dynamic",
-      table: task.waypoints[0] || "Unknown",
-      time: "5 min"
-    }));
-    setTasks(convertedTasks);
-    toast.success("Task moved down in queue");
+      // Find the task index
+      const index = tasks.findIndex(task => task.id === id);
+      if (index === -1 || index === tasks.length - 1) return;
+
+      // Swap with next task
+      const newTasks = [...tasks];
+      [newTasks[index], newTasks[index + 1]] = [newTasks[index + 1], newTasks[index]];
+
+      // Update priorities
+      newTasks[index].effectivePriority += 5;
+      newTasks[index + 1].effectivePriority -= 5;
+
+      // Update tasks in context
+      newTasks.forEach(task => {
+        updateTask(task.id, {
+          effectivePriority: task.effectivePriority
+        });
+      });
+
+      toast.success("Task moved down in queue");
     } catch (error) {
       toast.error("Failed to move task");
     }
   };
 
-  const markAsCritical = async (id: string) => {
+  const markAsCritical = (id: number) => {
     try {
-      await taskService.markAsCritical(id);
+      // Find the task
+      const task = tasks.find(t => t.id === id);
+      if (!task) return;
+
+      // Increase priority significantly
+      updateTask(id, {
+        effectivePriority: task.effectivePriority + 50,
+        priority: "high"
+      });
+
       toast.success("Task marked as critical");
-      // Refresh tasks to show updated priority
-      fetchTasks();
     } catch (error) {
       toast.error("Failed to mark task as critical");
     }
@@ -186,11 +180,11 @@ export function TaskQueue() {
                   </Badge>
                 </div>
                 <div className="text-right hidden sm:block">
-                  <div className="font-medium">{task.time}</div>
+                  <div className="font-medium">{task.time || "5 min"}</div>
                   <div className="text-xs text-gray-500">ETA</div>
                 </div>
                 <div className="text-right">
-                  <div className="font-medium text-sm">P{task.effective_priority}</div>
+                  <div className="font-medium text-sm">P{task.effectivePriority}</div>
                   <div className="text-xs text-gray-500">Priority</div>
                 </div>
                 <div className="flex flex-col space-y-1">

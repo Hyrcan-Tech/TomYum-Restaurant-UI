@@ -8,45 +8,17 @@ import { TaskQueue } from "@/components/task-queue";
 import { RobotMonitor } from "@/components/robot-monitor";
 import { TaskForm } from "@/components/task-form";
 import { SystemStatus } from "@/components/system-status";
-import { reportingService } from "@/lib/reporting-service";
-import { robotService } from "@/lib/robot-service";
-import { taskService } from "@/lib/task-service";
-import { queueService } from "@/lib/queue-service";
+import { useRestaurant } from "@/lib/restaurant-context";
 
 export default function Dashboard() {
   const [isSystemRunning, setIsSystemRunning] = useState(true);
-  const [activeRobots, setActiveRobots] = useState(0);
-  const [pendingTasks, setPendingTasks] = useState(0);
-  const [systemHealth, setSystemHealth] = useState(0);
-  const [avgBattery, setAvgBattery] = useState(0);
+  const { robots, tasks } = useRestaurant();
 
-  useEffect(() => {
-    // Fetch dashboard data
-    const fetchData = async () => {
-      try {
-        // Get daily report for system stats
-        const report = await reportingService.getDailyReport();
-        setPendingTasks(report.total_tasks);
-        // Use optional chaining with fallback
-        setSystemHealth((report as any).system_health || 98);
-
-        // Get robots for battery level
-        const robots = await robotService.getAllRobots();
-        setActiveRobots(robots.length);
-
-        const totalBattery = robots.reduce((sum: number, robot: any) => sum + robot.battery_level, 0);
-        setAvgBattery(robots.length ? Math.round(totalBattery / robots.length) : 0);
-      } catch (error) {
-        console.error("Failed to fetch dashboard data:", error);
-      }
-    };
-
-    fetchData();
-
-    // Refresh data every 30 seconds
-    const interval = setInterval(fetchData, 30000);
-    return () => clearInterval(interval);
-  }, []);
+  // Calculate statistics from context data
+  const activeRobots = robots.length;
+  const pendingTasks = tasks.filter(t => t.status === "queued").length;
+  const systemHealth = 98; // Mock value
+  const avgBattery = robots.length ? Math.round(robots.reduce((sum, robot) => sum + robot.battery, 0) / robots.length) : 0;
 
   return (
     <div className="min-h-screen bg-gray-50 p-4 md:p-6">
