@@ -20,7 +20,6 @@ A smart delivery robot solution for Tom Yum Thai Restaurant built with React, Ty
 ## 🛠️ Technology Stack
 
 ### Frontend
-
 - **React** with TypeScript
 - **Tailwind CSS** for styling
 - **shadcn/ui** components
@@ -29,7 +28,6 @@ A smart delivery robot solution for Tom Yum Thai Restaurant built with React, Ty
 - **Vite** for build tooling
 
 ### Backend
-
 - **FastAPI** for backend API
 - **SQLAlchemy** for database ORM
 - **WebSockets** for real-time updates
@@ -38,66 +36,37 @@ A smart delivery robot solution for Tom Yum Thai Restaurant built with React, Ty
 ## 📦 Prerequisites
 
 - Node.js 18+
-- Python 3.9+
 - npm or yarn
-
-## 🚀 Installation
-
-1. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd tom-yum-robot-control
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-pip install -r requirements.txt
-```
 
 ## ▶️ Running the Application
 
 ### Development Mode
 
-1. Start the backend server:
-
+1. Install dependencies:
 ```bash
-uvicorn app:app --reload
+npm install
 ```
 
-2. In another terminal, start the frontend:
-
+2. Start the frontend development server:
 ```bash
 npm run dev
 ```
 
-The application will be available at `http://localhost:8080`
+The application will be available at `http://localhost:5173`
 
 ### Production Build
 
 1. Build the frontend:
-
 ```bash
 npm run build
 ```
 
-2. Start the backend server:
-
+2. Preview the production build:
 ```bash
-uvicorn app:app
+npm run preview
 ```
 
-The application will be available at `http://localhost:8000`
-
-### Using the Run Script
-
-```bash
-python run_server.py
-```
-
-This will automatically build the frontend and start the backend server.
+The application will be available at `http://localhost:4173`
 
 ## 🌐 Application Pages
 
@@ -127,12 +96,6 @@ src/
 ├── utils/ # Helper functions
 ├── App.tsx # Main application component with routing
 └── main.tsx # Application entry point
-
-backend/
-├── app.py # FastAPI backend
-├── database.py # Database configuration
-├── models.py # Database models
-└── requirements.txt # Python dependencies
 ```
 
 ## 🧪 Development
@@ -151,20 +114,6 @@ The application uses shadcn/ui components extensively. All UI components are bui
 
 React Router is used for client-side routing with the following routes defined in `src/App.tsx`.
 
-## 🚢 Deployment
-
-The application can be deployed to any platform that supports Node.js and Python:
-
-1. Build the frontend:
-   ```bash
-   npm run build
-   ```
-
-2. Deploy the backend with the built frontend:
-   ```bash
-   uvicorn app:app --host 0.0.0.0 --port 8000
-   ```
-
 ## 🔐 Security
 
 This is a full-stack application with proper authentication and authorization. In a production environment, you should:
@@ -179,7 +128,6 @@ This is a full-stack application with proper authentication and authorization. I
 The application provides a comprehensive REST API with the following endpoints:
 
 ### Authentication
-
 ```
 POST /api/auth/login
 POST /api/auth/logout
@@ -187,14 +135,12 @@ GET /api/auth/me
 ```
 
 ### Tables
-
 ```
 GET /api/tables
 GET /api/tables/{table_id}
 ```
 
 ### Points
-
 ```
 GET /api/points
 GET /api/points/{point_id}
@@ -202,14 +148,12 @@ GET /api/points/type/{point_type}
 ```
 
 ### Orders
-
 ```
 GET /api/orders
 GET /api/orders/{order_id}
 ```
 
 ### Tasks
-
 ```
 GET /api/tasks
 GET /api/tasks/{task_id}
@@ -218,7 +162,6 @@ PUT /api/tasks/{task_id}/status
 ```
 
 ### Robots
-
 ```
 GET /api/robots
 GET /api/robots/{robot_id}
@@ -226,7 +169,6 @@ POST /api/robots/{robot_id}/command
 ```
 
 ### Queue Management
-
 ```
 GET /api/queue/tasks
 GET /api/queue/tasks/ready
@@ -237,7 +179,6 @@ GET /api/queue/assignment-log
 ```
 
 ### Charging Management
-
 ```
 GET /api/charging/status
 GET /api/charging/policy
@@ -245,7 +186,6 @@ POST /api/charging/manual-request
 ```
 
 ### Task State Machine
-
 ```
 POST /api/tasks/{task_id}/confirm-step
 GET /api/tasks/{task_id}/current-step
@@ -254,7 +194,6 @@ PUT /api/tasks/{task_id}/resume
 ```
 
 ### Reports
-
 ```
 GET /api/reports/daily
 GET /api/reports/tasks
@@ -264,7 +203,6 @@ GET /api/reports/performance
 ## 📊 Data Models
 
 ### Task
-
 ```typescript
 interface Task {
   id: string;
@@ -283,7 +221,6 @@ interface Task {
 ```
 
 ### Robot
-
 ```typescript
 interface Robot {
   id: string;
