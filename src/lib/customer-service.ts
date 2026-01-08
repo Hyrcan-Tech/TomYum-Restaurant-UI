@@ -27,7 +27,6 @@ export const customerService = {
       lastVisit: new Date().toISOString().split('T')[0],
       membership: 'regular'
     };
-    
     const updatedCustomers = [...customers, newCustomer];
     localStorage.setItem('customers', JSON.stringify(updatedCustomers));
     toast.success('Customer added successfully');
@@ -37,10 +36,9 @@ export const customerService = {
   // Update customer information
   updateCustomer: (id: number, customerData: Partial<Customer>) => {
     const customers = customerService.getCustomers();
-    const updatedCustomers = customers.map(customer => 
+    const updatedCustomers = customers.map(customer =>
       customer.id === id ? { ...customer, ...customerData } : customer
     );
-    
     localStorage.setItem('customers', JSON.stringify(updatedCustomers));
     toast.success('Customer updated successfully');
     return updatedCustomers.find(c => c.id === id);
